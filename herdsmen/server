@@ -1,0 +1,122 @@
+#!/usr/bin/env python
+from argparse import ArgumentParser
+from autobahn.twisted.resource import WSGIRootResource
+from autobahn.twisted.websocket import (WebSocketServerFactory,
+                                        WebSocketServerProtocol)
+from autobahn.twisted.resource import (WebSocketResource,
+                                       WSGIRootResource)
+from flask import (Flask, jsonify, g, request)
+from twisted.internet import reactor
+from twisted.web.server import Site
+from twisted.web.wsgi import WSGIResource
+from usercode import UserCodeManager
+import tarfile
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Hi"
+
+@app.route("/load", methods=["POST"])
+def load():
+    "Load code into the robot"
+    # TODO: Only allow this in the right state
+
+    if "usercode.tar" not in request.files:
+        # TODO: Sanitise errors
+        return "ERROR"
+
+    f = request.files["usercode.tar"]
+    ucodeman.load(f)
+    return "OK"
+
+@app.route("/stop")
+def stop():
+    "Stop the current code from executing"
+    # TODO: Only allow this when in the right state
+    ucodeman.stop()
+    return "OK"
+
+@app.route("/start")
+def start():
+    "Send the start signal to the current code"
+    # TODO: Only allow this when in the right state
+    ucodeman.start()
+    return "OK"
+
+@app.route("/settings/zone", methods=["GET","PUT"])
+def settings_zone():
+    "Set the zone -- 0-4"
+    # TODO: Only allow this before the start signal has been sent
+
+    if request.method == "GET":
+        "Zone is being read"
+        return jsonify(zone=ucodeman.zone)
+
+    # Zone is being set
+    if "zone" not in request.form:
+        # TODO: Return a more sensible/uniform error
+        return "ERROR"
+
+    zone = int(request.form["zone"])
+    if zone < 0 or zone > 3:
+        # TODO: Sanitise errors
+        return "ERROR"
+
+    ucodeman.zone = zone
+    return "OK"
+
+@app.route("/settings/mode")
+def settings_mode():
+    "Set the mode -- 'comp' or 'dev'"
+    # TODO: Only allow this before the start signal has been sent
+
+    # PUT for setting the mode
+    # GET for getting the mode
+    pass
+
+@app.route("/log")
+def log():
+    return "Not implemented"
+
+class TestProto(WebSocketServerProtocol):
+
+    def onMessage(self, payload, isBinary):
+        self.sendMessage("hey!")
+
+parser = ArgumentParser( description = "Control robot code via HTTP" )
+
+parser.add_argument("-d", "--debug",
+                    action="store_true",
+                    help="Run the server in debug mode")
+
+parser.add_argument("-p", "--port",
+                    type=int, default=80,
+                    help="The port to listen on")
+
+parser.add_argument("-l", "--log-dir",
+                    type=str, default="./",
+                    help="The directory to store the log in")
+
+args = parser.parse_args()
+
+ucodeman = UserCodeManager()
+
+app.debug = args.debug
+
+ws_factory = WebSocketServerFactory()
+ws_factory.protocol = TestProto
+ws_resource = WebSocketResource(ws_factory)
+
+# WSGI resource for the flask server
+app_resource = WSGIResource(reactor, reactor.getThreadPool(), app)
+
+# Root resource
+root = WSGIRootResource(app_resource,
+                        {"ws": ws_resource})
+
+site = Site(root)
+reactor.listenTCP(args.port, site)
+reactor.run()
+
