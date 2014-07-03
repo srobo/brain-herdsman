@@ -9,7 +9,7 @@ from flask import (Flask, jsonify, g, request)
 from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
-from usercode import UserCodeManager
+from herdsman.usercode import UserCodeManager
 import tarfile
 
 app = Flask(__name__)
