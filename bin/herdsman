@@ -12,73 +12,77 @@ from twisted.web.wsgi import WSGIResource
 from herdsman.usercode import UserCodeManager
 import tarfile
 
-app = Flask(__name__)
+class HerdsmanAPI(Flask):
+    def __init__(self, ucodeman, *args, **kw):
+        Flask.__init__(self, *args, **kw)
+        self.ucodeman = ucodeman
 
-@app.route("/")
-def home():
-    return "Hi"
+        self.route("/")(self.home)
+        self.route("/load", methods=["POST"])(self.load)
+        self.route("/stop")(self.stop)
+        self.route("/start")(self.start)
+        self.route("/settings/zone", methods=["GET", "PUT"])(self.settings_zone)
+        self.route("/settings/mode")(self.settings_mode)
+        self.route("/log")(self.log)
 
-@app.route("/load", methods=["POST"])
-def load():
-    "Load code into the robot"
-    # TODO: Only allow this in the right state
+    def home(self):
+        return "Hi"
 
-    if "usercode.tar" not in request.files:
-        # TODO: Sanitise errors
-        return "ERROR"
+    def load(self):
+        "Load code into the robot"
+        # TODO: Only allow this in the right state
 
-    f = request.files["usercode.tar"]
-    ucodeman.load(f)
-    return "OK"
+        if "usercode.tar" not in request.files:
+            # TODO: Sanitise errors
+            return "ERROR"
 
-@app.route("/stop")
-def stop():
-    "Stop the current code from executing"
-    # TODO: Only allow this when in the right state
-    ucodeman.stop()
-    return "OK"
+        f = request.files["usercode.tar"]
+        self.ucodeman.load(f)
+        return "OK"
 
-@app.route("/start")
-def start():
-    "Send the start signal to the current code"
-    # TODO: Only allow this when in the right state
-    ucodeman.start()
-    return "OK"
+    def stop(self):
+        "Stop the current code from executing"
+        # TODO: Only allow this when in the right state
+        self.ucodeman.stop()
+        return "OK"
 
-@app.route("/settings/zone", methods=["GET","PUT"])
-def settings_zone():
-    "Set the zone -- 0-4"
-    # TODO: Only allow this before the start signal has been sent
+    def start(self):
+        "Send the start signal to the current code"
+        # TODO: Only allow this when in the right state
+        self.ucodeman.start()
+        return "OK"
 
-    if request.method == "GET":
-        "Zone is being read"
-        return jsonify(zone=ucodeman.zone)
+    def settings_zone(self):
+        "Set the zone -- 0-4"
+        # TODO: Only allow this before the start signal has been sent
 
-    # Zone is being set
-    if "zone" not in request.form:
-        # TODO: Return a more sensible/uniform error
-        return "ERROR"
+        if request.method == "GET":
+            "Zone is being read"
+            return jsonify(zone=self.ucodeman.zone)
 
-    zone = int(request.form["zone"])
-    if zone < 0 or zone > 3:
-        # TODO: Sanitise errors
-        return "ERROR"
+        # Zone is being set
+        if "zone" not in request.form:
+            # TODO: Return a more sensible/uniform error
+            return "ERROR"
 
-    ucodeman.zone = zone
-    return "OK"
+        zone = int(request.form["zone"])
+        if zone < 0 or zone > 3:
+            # TODO: Sanitise errors
+            return "ERROR"
 
-@app.route("/settings/mode")
-def settings_mode():
-    "Set the mode -- 'comp' or 'dev'"
-    # TODO: Only allow this before the start signal has been sent
+        self.ucodeman.zone = zone
+        return "OK"
 
-    # PUT for setting the mode
-    # GET for getting the mode
-    pass
+    def settings_mode(self):
+        "Set the mode -- 'comp' or 'dev'"
+        # TODO: Only allow this before the start signal has been sent
 
-@app.route("/log")
-def log():
-    return "Not implemented"
+        # PUT for setting the mode
+        # GET for getting the mode
+        pass
+
+    def log(self):
+        return "Not implemented"
 
 class TestProto(WebSocketServerProtocol):
 
@@ -101,13 +105,14 @@ parser.add_argument("-l", "--log-dir",
 
 args = parser.parse_args()
 
-ucodeman = UserCodeManager()
-
-app.debug = args.debug
+ucodeman = UserCodeManager(args.log_dir)
 
 ws_factory = WebSocketServerFactory()
 ws_factory.protocol = TestProto
 ws_resource = WebSocketResource(ws_factory)
+
+app = HerdsmanAPI(ucodeman, __name__)
+app.debug = args.debug
 
 # WSGI resource for the flask server
 app_resource = WSGIResource(reactor, reactor.getThreadPool(), app)
