@@ -8,6 +8,7 @@ import tempfile
 import time
 from twisted.internet import protocol
 from twisted.internet import reactor
+import zipfile
 
 MODE_DEV = "dev"
 MODE_COMP = "comp"
@@ -66,7 +67,7 @@ class UserCodeManager(object):
                                                          UserCodeManager.state_strings[newstate])
         self.state = newstate
 
-    def load(self, fileobj):
+    def load(self, fileobj, type="zip"):
         "Load new code into the robot"
 
         if self.state != UserCodeManager.S_IDLE:
@@ -82,12 +83,17 @@ class UserCodeManager(object):
         # Directory the user code will be extracted into
         self.userdir = tempfile.mkdtemp(prefix="pyenv-")
 
-        # Open the file in transparent (de)compression mode
-        with tarfile.open(fileobj=fileobj, mode="r") as tarf:
-            print "Extracting user code to", self.userdir
-            tarf.extractall(self.userdir)
+        print "Extracting user code to", self.userdir
 
-        # TODO: In future use DBUS to signal start
+        # Open the file in transparent (de)compression mode
+        if type == "zip":
+            with zipfile.ZipFile(fileobj, "r") as zipf:
+                zipf.extractall(self.userdir)
+
+        elif type == "tar":
+            with tarfile.open(fileobj=fileobj, mode="r") as tarf:
+                tarf.extractall(self.userdir)
+
         self.start_fifo = tempfile.mktemp()
         self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited)
 
@@ -104,7 +110,7 @@ class UserCodeManager(object):
     def start(self):
         "Send the start info the user code"
 
-        if self.state != S_LOADED:
+        if self.state != self.S_LOADED:
             raise InvalidOpForState("start() called from the wrong state")
 
         self.userproto.send_start( {"mode": self.mode,
@@ -139,3 +145,6 @@ class UserCodeManager(object):
     def hw_reset(self):
         "Reset the robot hardware back to power-on state"
         pass
+
+    def get_state(self):
+        return self.state

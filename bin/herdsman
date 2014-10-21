@@ -1,127 +1,192 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
-from autobahn.twisted.resource import WSGIRootResource
-from autobahn.twisted.websocket import (WebSocketServerFactory,
-                                        WebSocketServerProtocol)
-from autobahn.twisted.resource import (WebSocketResource,
-                                       WSGIRootResource)
-from flask import (Flask, jsonify, g, request)
-from twisted.internet import reactor
-from twisted.web.server import Site
-from twisted.web.wsgi import WSGIResource
+from autobahn.wamp import types
+from autobahn.twisted.util import sleep
+from autobahn.twisted import wamp, websocket
+from herdsman import usercode
 from herdsman.usercode import UserCodeManager
-import tarfile
+import json
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.endpoints import serverFromString
+from twisted.python import log
+from twisted.web import server, resource, static
+import sys
 
-class HerdsmanAPI(Flask):
-    def __init__(self, ucodeman, *args, **kw):
-        Flask.__init__(self, *args, **kw)
-        self.ucodeman = ucodeman
+class HerdsmanWAMP(wamp.ApplicationSession):
 
-        self.route("/")(self.home)
-        self.route("/load", methods=["POST"])(self.load)
-        self.route("/stop")(self.stop)
-        self.route("/start")(self.start)
-        self.route("/settings/zone", methods=["GET", "PUT"])(self.settings_zone)
-        self.route("/settings/mode")(self.settings_mode)
-        self.route("/log")(self.log)
+    def __init__(self, ucode, *args, **kw):
+        self.ucode = ucode
+        wamp.ApplicationSession.__init__(self, *args, **kw)
 
-    def home(self):
-        return "Hi"
+    def onJoin(self, details):
+        self.register(self.srobo_hello, "org.srobo.hello")
+        self.register(self.srobo_get_zone, "org.srobo.zone")
+        self.register(self.srobo_get_mode, "org.srobo.mode")
+        self.register(self.srobo_logs_all, "org.srobo.logs.all")
+        self.register(self.srobo_logs_get, "org.srobo.logs.get")
+        self.register(self.srobo_start, "org.srobo.start")
+        self.register(self.srobo_stop, "org.srobo.stop")
+        self.register(self.srobo_state, "org.srobo.state")
+        self.register(self.srobo_env_version, "org.srobo.environment.version")
+        self.register(self.srobo_proj_name, "org.srobo.project.name")
+        self.register(self.srobo_proj_version, "org.srobo.project.version")
+        
+    @staticmethod
+    def create_server(reactor, port, ucode):
+        router_factory = wamp.RouterFactory()
+        session_factory = wamp.RouterSessionFactory(router_factory)
 
-    def load(self):
-        "Load code into the robot"
-        # TODO: Only allow this in the right state
+        component_config = types.ComponentConfig(realm = "srobo")
+        component_session = HerdsmanWAMP(ucode, component_config)
+        session_factory.add(component_session)
 
-        if "usercode.tar" not in request.files:
-            # TODO: Sanitise errors
-            return "ERROR"
+        transport_factory = websocket.WampWebSocketServerFactory(session_factory,
+                                                                 debug = True,
+                                                                 debug_wamp = True)
 
-        f = request.files["usercode.tar"]
-        self.ucodeman.load(f)
-        return "OK"
+        wamp_server = serverFromString(reactor, "tcp:{}".format(port))
+        wamp_server.listen(transport_factory)
 
-    def stop(self):
-        "Stop the current code from executing"
-        # TODO: Only allow this when in the right state
-        self.ucodeman.stop()
-        return "OK"
+    @staticmethod
+    def srobo_hello(client_version):
+        major, minor, patch = [int(x) for x in client_version.split(".")]
+        return {"compatible": True}
 
-    def start(self):
-        "Send the start signal to the current code"
-        # TODO: Only allow this when in the right state
-        self.ucodeman.start()
-        return "OK"
+    @staticmethod
+    def srobo_get_zone():
+        return self.ucode.zone
 
-    def settings_zone(self):
-        "Set the zone -- 0-4"
-        # TODO: Only allow this before the start signal has been sent
+    @staticmethod
+    def srobo_get_mode():
+        m = self.ucode.mode
+        if m == self.ucode.MODE_DEV:
+            return "dev"
+        elif m == self.ucode.MODE_COMP:
+            return "comp"
+        raise Exception("Unknown mode setting")
 
-        if request.method == "GET":
-            "Zone is being read"
-            return jsonify(zone=self.ucodeman.zone)
+    @staticmethod
+    def srobo_logs_all():
+        return [{"type": "current", "name": "current", "title": "Current", "contents": []}]
 
-        # Zone is being set
-        if "zone" not in request.form:
-            # TODO: Return a more sensible/uniform error
-            return "ERROR"
+    @staticmethod
+    def srobo_logs_get(name):
+        return {"type": "old",
+                "name": "old_3",
+                "title": "#3",
+                "contents": ["Cats."]}
 
-        zone = int(request.form["zone"])
-        if zone < 0 or zone > 3:
-            # TODO: Sanitise errors
-            return "ERROR"
+    def srobo_start(self):
+        print "START"
+        self.ucode.start()
 
-        self.ucodeman.zone = zone
-        return "OK"
+    def srobo_stop(self):
+        self.ucode.stop()
 
-    def settings_mode(self):
-        "Set the mode -- 'comp' or 'dev'"
-        # TODO: Only allow this before the start signal has been sent
+    def srobo_state(self):
+        state = self.ucode.get_state()
 
-        # PUT for setting the mode
-        # GET for getting the mode
-        pass
+        if state == UserCodeManager.S_IDLE:
+            return "stopped"
+        elif state == UserCodeManager.S_LOADED:
+            return "stopped"
+        elif state == UserCodeManager.S_STARTED:
+            return "started"
+        elif state == UserCodeManager.S_KILLING:
+            return "stopping"
+        else:
+            return "stopped"
 
-    def log(self):
-        return "Not implemented"
+    @staticmethod
+    def srobo_env_version():
+        return 1
 
-class TestProto(WebSocketServerProtocol):
+    @staticmethod
+    def srobo_proj_name():
+        return "SR Project"
 
-    def onMessage(self, payload, isBinary):
-        self.sendMessage("hey!")
+    @staticmethod
+    def srobo_proj_version():
+        return "2ae01472317d1935a84797ec1983ae243fc6aa28"
 
-parser = ArgumentParser( description = "Control robot code via HTTP" )
+def create_http_server(reactor, port, static_dir):
+    root = static.File(static_dir)
+    site = server.Site(root)
+    reactor.listenTCP(port, site)
 
-parser.add_argument("-d", "--debug",
-                    action="store_true",
-                    help="Run the server in debug mode")
+class CustomRoot(resource.Resource):
+    pass
 
-parser.add_argument("-p", "--port",
-                    type=int, default=80,
-                    help="The port to listen on")
+class CustomPages(resource.Resource):
+    isLeaf = True
+    def render_GET(self, request):
+        request.setHeader("Access-Control-Allow-Origin", "*")
+        return json.dumps({"pages":[]})
+        
+def create_custom_http_server(reactor, port, path):
+    root = CustomRoot()
+    root.putChild("custom_pages", CustomPages())
+    site = server.Site(root)
+    reactor.listenTCP(port, site)
 
-parser.add_argument("-l", "--log-dir",
-                    type=str, default="./",
-                    help="The directory to store the log in")
+if __name__ == "__main__":
+    parser = ArgumentParser( description = "Control robot code via HTTP" )
 
-args = parser.parse_args()
+    parser.add_argument("-d", "--debug",
+                        action="store_true",
+                        help="Run the server in debug mode")
 
-ucodeman = UserCodeManager(args.log_dir)
+    parser.add_argument("-p", "--port",
+                        type=int, default=80,
+                        help="The port to listen on")
 
-ws_factory = WebSocketServerFactory()
-ws_factory.protocol = TestProto
-ws_resource = WebSocketResource(ws_factory)
+    parser.add_argument("-w", "--wamp-port",
+                        type=int, default=9000,
+                        help="The port to server WAMP over")
 
-app = HerdsmanAPI(ucodeman, __name__)
-app.debug = args.debug
+    parser.add_argument("-c", "--custom-port",
+                        type=int, default=10000,
+                        help="Port number of user's custom pages server")
 
-# WSGI resource for the flask server
-app_resource = WSGIResource(reactor, reactor.getThreadPool(), app)
+    parser.add_argument("-t", "--custom-dir",
+                        type=str, default="custom",
+                        help="Directory to pretend to serve custom pages from")
 
-# Root resource
-root = WSGIRootResource(app_resource,
-                        {"ws": ws_resource})
+    parser.add_argument("-l", "--log-dir",
+                        type=str, default="./",
+                        help="The directory to store the log in")
 
-site = Site(root)
-reactor.listenTCP(args.port, site)
-reactor.run()
+    parser.add_argument("-s", "--static-dir",
+                        type=str,
+                        help="The directory to serve statically over HTTP")
+
+    parser.add_argument("-u", "--user",
+                        type=str,
+                        help="Path to a robot.zip to load in")
+
+    args = parser.parse_args()
+
+    if args.static_dir is None:
+        print >>sys.stderr, "Static dir needs to be specified"
+        exit(1)
+
+    if args.debug:
+        log.startLogging(sys.stdout)
+
+    user = usercode.UserCodeManager(args.log_dir)
+
+    if args.user is not None:
+        with open(args.user, "r") as f:
+            user.load(f)
+
+    HerdsmanWAMP.create_server(reactor, args.wamp_port, user)
+    create_http_server(reactor,
+                       args.port,
+                       args.static_dir)
+    create_custom_http_server(reactor,
+                              args.custom_port,
+                              args.custom_dir)
+
+    reactor.run()
 
