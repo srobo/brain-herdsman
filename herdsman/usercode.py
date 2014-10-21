@@ -30,10 +30,6 @@ class UserCodeProtocol(protocol.ProcessProtocol):
         self.exit_cb(status)
 
     def send_start(self, match_info):
-        # Wait until the child has created the fifo
-        while not os.path.exists( self.start_fifo ):
-            time.sleep(0.1)
-
         with open( self.start_fifo, "w" ) as f:
             f.write( json.dumps( match_info ) )
 
@@ -95,6 +91,8 @@ class UserCodeManager(object):
                 tarf.extractall(self.userdir)
 
         self.start_fifo = tempfile.mktemp()
+        os.mkfifo(self.start_fifo)
+
         self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited)
 
         self.usertransport = reactor.spawnProcess(self.userproto,
