@@ -98,8 +98,9 @@ class UserCodeManager(object):
         self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited)
 
         self.usertransport = reactor.spawnProcess(self.userproto,
-                                                  "/usr/bin/python",
-                                                  args = [ "/usr/bin/python", #TODO: Add this back in "-m", "sr.loggrok",
+                                                  sys.executable,
+                                                  args = [ sys.executable,
+                                                           "-m", "herdsman.loggrok",
                                                            "robot.py",
                                                            "--usbkey", self.logdir,
                                                            "--startfifo", self.start_fifo ],
