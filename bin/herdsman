@@ -33,7 +33,7 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.register(self.srobo_proj_version, "org.srobo.project.version")
         
     @staticmethod
-    def create_server(reactor, port, ucode):
+    def create_server(reactor, port, ucode, debug=False):
         router_factory = wamp.RouterFactory()
         session_factory = wamp.RouterSessionFactory(router_factory)
 
@@ -42,8 +42,8 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         session_factory.add(component_session)
 
         transport_factory = websocket.WampWebSocketServerFactory(session_factory,
-                                                                 debug = True,
-                                                                 debug_wamp = True)
+                                                                 debug = debug,
+                                                                 debug_wamp = debug)
 
         wamp_server = serverFromString(reactor, "tcp:{}".format(port))
         wamp_server.listen(transport_factory)
@@ -187,7 +187,7 @@ if __name__ == "__main__":
         with open(args.user, "r") as f:
             user.load(f)
 
-    HerdsmanWAMP.create_server(reactor, args.wamp_port, user)
+    HerdsmanWAMP.create_server(reactor, args.wamp_port, user, args.debug)
     create_http_server(reactor,
                        args.port,
                        args.static_dir)
