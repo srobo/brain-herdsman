@@ -99,7 +99,7 @@ class UserCodeManager(object):
                                                   sys.executable,
                                                   args = [ sys.executable,
                                                            "-m", "herdsman.loggrok",
-                                                           "robot.py",
+                                                           "run.py",
                                                            "--usbkey", self.logdir,
                                                            "--startfifo", self.start_fifo ],
                                                   env = os.environ,
