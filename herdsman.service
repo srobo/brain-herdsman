@@ -3,7 +3,7 @@ Description=Daemon to load a user's code
 
 [Service]
 Type=simple
-ExecStart=/root/env/bin/python /root/env/bin/herdsman -s /root/srobo-tablet-interface -u /tmp/mount/robot.zip
+ExecStart=/root/env/bin/python /root/env/bin/herdsman -s /root/srobo-tablet-interface -u /tmp/mount/robot.zip -l /tmp/mount
 
 [Install]
 WantedBy=multi-user.target

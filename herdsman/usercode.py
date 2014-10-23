@@ -19,12 +19,15 @@ class InvalidOpForState(Exception):
     pass
 
 class UserCodeProtocol(protocol.ProcessProtocol):
-    def __init__(self, start_fifo, exit_cb):
+    def __init__(self, start_fifo, exit_cb, logfile):
         self.start_fifo = start_fifo
         self.exit_cb = exit_cb
+        self.logf = open(logfile,"w")
 
     def childDataReceived(self, childFD, data):
-        print "childDataReceived:", data
+        self.logf.write(data)
+        self.logf.flush()
+        os.fsync(self.logf.fileno())
 
     def processExited(self, status):
         self.exit_cb(status)
@@ -93,7 +96,8 @@ class UserCodeManager(object):
         self.start_fifo = tempfile.mktemp()
         os.mkfifo(self.start_fifo)
 
-        self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited)
+        logfile = os.path.join(self.logdir, "log.txt")
+        self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited, logfile)
 
         self.usertransport = reactor.spawnProcess(self.userproto,
                                                   sys.executable,
@@ -110,7 +114,8 @@ class UserCodeManager(object):
         "Send the start info the user code"
 
         if self.state != self.S_LOADED:
-            raise InvalidOpForState("start() called from the wrong state")
+            print "start() called from the wrong state"
+            return
 
         self.userproto.send_start( {"mode": self.mode,
                                     "zone": self.zone} )
