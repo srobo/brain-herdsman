@@ -134,11 +134,19 @@ def create_custom_http_server(reactor, port, path):
     site = server.Site(root)
     reactor.listenTCP(port, site)
 
+run_led_state = False
+
 def start_button_monitor(power, ucode):
+    global run_led_state
+
     if power.read_button():
         ucode.start()
+        run_led_state = True
     else:
         reactor.callLater(0.1, start_button_monitor, power, user)
+        run_led_state = not run_led_state
+
+    power.set_run_led(run_led_state)
 
 if __name__ == "__main__":
     parser = ArgumentParser( description = "Control robot code via HTTP" )
