@@ -3,6 +3,7 @@ Description=Daemon to load a user's code
 
 [Service]
 Type=simple
+ExecStartPre=/root/env/bin/python /root/firmware/usb_flash.py /root/firmware/config.yaml
 ExecStart=/root/env/bin/python /root/env/bin/herdsman -s /root/srobo-tablet-interface -u /tmp/mount/robot.zip -l /tmp/mount
 
 [Install]
