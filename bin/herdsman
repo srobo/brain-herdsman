@@ -23,6 +23,7 @@ class HerdsmanWAMP(wamp.ApplicationSession):
 
     def __init__(self, ucode, *args, **kw):
         self.ucode = ucode
+        self.log_line = 0
         wamp.ApplicationSession.__init__(self, *args, **kw)
 
     def onJoin(self, details):
@@ -39,9 +40,14 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.register(self.srobo_proj_version, "org.srobo.project.version")
 
         self.ucode.state_change_cb = self.state_change_cb
+        self.ucode.log_line_cb = self.log_line_cb
 
     def state_change_cb(self, state):
         self.publish("org.srobo.state", self.state_map[state])
+
+    def log_line_cb(self, line):
+        self.publish("org.srobo.logs.append", "current", line.strip(), self.log_line)
+        self.log_line += 1
 
     @staticmethod
     def create_server(reactor, port, ucode, debug=False):
@@ -77,16 +83,28 @@ class HerdsmanWAMP(wamp.ApplicationSession):
             return "comp"
         raise Exception("Unknown mode setting")
 
-    @staticmethod
-    def srobo_logs_all():
-        return [{"type": "current", "name": "current", "title": "Current", "contents": []}]
+    def get_log_contents(self):
+        if self.ucode.logfile is not None:
+            with open(self.ucode.logfile, "r") as f:
+                contents = f.read()
+        else:
+            contents = ""
 
-    @staticmethod
-    def srobo_logs_get(name):
+        lines = contents.splitlines()
+        print "CONTENTS", len(lines)
+        return lines
+
+    def srobo_logs_all(self):
+        return [{"type": "current",
+                 "name": "current",
+                 "title": "Current",
+                 "contents": self.get_log_contents()}]
+
+    def srobo_logs_get(self, name):
         return {"type": "old",
                 "name": "old_3",
                 "title": "#3",
-                "contents": ["Cats."]}
+                "contents": self.get_log_contents()}
 
     def srobo_start(self):
         self.ucode.start()

@@ -19,12 +19,14 @@ class InvalidOpForState(Exception):
     pass
 
 class UserCodeProtocol(protocol.ProcessProtocol):
-    def __init__(self, start_fifo, exit_cb, logfile):
+    def __init__(self, start_fifo, exit_cb, logfile, log_line_cb):
         self.start_fifo = start_fifo
         self.exit_cb = exit_cb
         self.logf = open(logfile,"w")
+        self.log_line_cb = log_line_cb
 
     def childDataReceived(self, childFD, data):
+        self.log_line_cb(data)
         self.logf.write(data)
         self.logf.flush()
         os.fsync(self.logf.fileno())
@@ -51,6 +53,8 @@ class UserCodeManager(object):
         self.mode = MODE_DEV
         self.state = UserCodeManager.S_IDLE
         self.state_change_cb = None
+        self.log_line_cb = None
+        self.logfile = None
 
         # Current user process protocol and transport
         self.userproto = None
@@ -99,8 +103,11 @@ class UserCodeManager(object):
         self.start_fifo = tempfile.mktemp()
         os.mkfifo(self.start_fifo)
 
-        logfile = os.path.join(self.logdir, "log.txt")
-        self.userproto = UserCodeProtocol(self.start_fifo, self.code_exited, logfile)
+        self.logfile = os.path.join(self.logdir, "log.txt")
+        self.userproto = UserCodeProtocol(self.start_fifo,
+                                          self.code_exited,
+                                          self.logfile,
+                                          self._log_line_cb)
 
         self.usertransport = reactor.spawnProcess(self.userproto,
                                                   sys.executable,
@@ -112,6 +119,10 @@ class UserCodeManager(object):
                                                   env = os.environ,
                                                   path = self.userdir)
         self.change_state(UserCodeManager.S_LOADED)
+
+    def _log_line_cb(self, *args, **kw):
+        if self.log_line_cb is not None:
+            self.log_line_cb(*args, **kw)
 
     def start(self):
         "Send the start info the user code"
