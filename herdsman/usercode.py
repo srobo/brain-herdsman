@@ -113,11 +113,11 @@ class UserCodeManager(object):
                                                   sys.executable,
                                                   args = [ sys.executable,
                                                            "-m", "herdsman.loggrok",
-                                                           "run.py",
+                                                           "robot.py",
                                                            "--usbkey", self.logdir,
                                                            "--startfifo", self.start_fifo ],
                                                   env = os.environ,
-                                                  path = self.userdir)
+                                                  path = os.path.join(self.userdir, "user"))
         self.change_state(UserCodeManager.S_LOADED)
 
     def _log_line_cb(self, *args, **kw):
