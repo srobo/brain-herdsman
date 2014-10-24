@@ -15,6 +15,11 @@ import sys
 
 class HerdsmanWAMP(wamp.ApplicationSession):
 
+    state_map = { UserCodeManager.S_IDLE: "stopped",
+                  UserCodeManager.S_LOADED: "stopped",
+                  UserCodeManager.S_STARTED: "started",
+                  UserCodeManager.S_KILLING: "stopping" }
+
     def __init__(self, ucode, *args, **kw):
         self.ucode = ucode
         wamp.ApplicationSession.__init__(self, *args, **kw)
@@ -31,7 +36,12 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.register(self.srobo_env_version, "org.srobo.environment.version")
         self.register(self.srobo_proj_name, "org.srobo.project.name")
         self.register(self.srobo_proj_version, "org.srobo.project.version")
-        
+
+        self.ucode.state_change_cb = self.state_change_cb
+
+    def state_change_cb(self, state):
+        self.publish("org.srobo.state", self.state_map[state])
+
     @staticmethod
     def create_server(reactor, port, ucode, debug=False):
         router_factory = wamp.RouterFactory()
@@ -78,7 +88,6 @@ class HerdsmanWAMP(wamp.ApplicationSession):
                 "contents": ["Cats."]}
 
     def srobo_start(self):
-        print "START"
         self.ucode.start()
 
     def srobo_stop(self):
@@ -87,16 +96,10 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def srobo_state(self):
         state = self.ucode.get_state()
 
-        if state == UserCodeManager.S_IDLE:
-            return "stopped"
-        elif state == UserCodeManager.S_LOADED:
-            return "stopped"
-        elif state == UserCodeManager.S_STARTED:
-            return "started"
-        elif state == UserCodeManager.S_KILLING:
-            return "stopping"
-        else:
-            return "stopped"
+        if state in self.state_map:
+            return self.state_map[state]
+
+        return "stopped"
 
     @staticmethod
     def srobo_env_version():

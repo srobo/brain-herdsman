@@ -50,6 +50,7 @@ class UserCodeManager(object):
         self.zone = 0
         self.mode = MODE_DEV
         self.state = UserCodeManager.S_IDLE
+        self.state_change_cb = None
 
         # Current user process protocol and transport
         self.userproto = None
@@ -65,6 +66,8 @@ class UserCodeManager(object):
         print "UserCodeManager state: {0} -> {1}".format(UserCodeManager.state_strings[self.state],
                                                          UserCodeManager.state_strings[newstate])
         self.state = newstate
+        if self.state_change_cb is not None:
+            self.state_change_cb(newstate)
 
     def load(self, fileobj, type="zip"):
         "Load new code into the robot"
@@ -120,8 +123,10 @@ class UserCodeManager(object):
         self.userproto.send_start( {"mode": self.mode,
                                     "zone": self.zone} )
         
-        if self.mode == UserCode.MODE_COMP:
+        if self.mode == MODE_COMP:
             self.match_timer = reactor.callLater(MATCH_LENGTH, self.end_match)
+
+        self.change_state(UserCodeManager.S_STARTED)
 
     def end_match(self):
         "Called when the match timer expires"
