@@ -5,6 +5,7 @@ from autobahn.twisted.util import sleep
 from autobahn.twisted import wamp, websocket
 from herdsman import usercode
 from herdsman.usercode import UserCodeManager
+from herdsman.powerhack import get_power
 import json
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -133,6 +134,12 @@ def create_custom_http_server(reactor, port, path):
     site = server.Site(root)
     reactor.listenTCP(port, site)
 
+def start_button_monitor(power, ucode):
+    if power.read_button():
+        ucode.start()
+    else:
+        reactor.callLater(0.1, start_button_monitor, power, user)
+
 if __name__ == "__main__":
     parser = ArgumentParser( description = "Control robot code via HTTP" )
 
@@ -189,6 +196,10 @@ if __name__ == "__main__":
     if args.user is not None:
         with open(args.user, "r") as f:
             user.load(f)
+
+    power = get_power()
+    if power is not None:
+        reactor.callLater(0.1, start_button_monitor, power, user)
 
     HerdsmanWAMP.create_server(reactor, args.wamp_port, user, args.debug)
     create_http_server(reactor,
