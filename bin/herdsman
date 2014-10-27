@@ -42,6 +42,7 @@ class HerdsmanWAMP(wamp.ApplicationSession):
 
         self.ucode.state_change_cb = self.state_change_cb
         self.ucode.log_line_cb = self.log_line_cb
+        self.ucode.proj_meta_cb = self.proj_meta_cb
 
     def state_change_cb(self, state):
         self.publish("org.srobo.state", self.state_map[state])
@@ -49,6 +50,10 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def log_line_cb(self, line):
         self.publish("org.srobo.logs.append", "current", line.strip(), self.log_line)
         self.log_line += 1
+
+    def proj_meta_cb(self, metadata):
+        self.publish("org.srobo.project.name", metadata['name'])
+        self.publish("org.srobo.project.version", metadata['version'])
 
     @staticmethod
     def create_server(reactor, port, ucode, debug=False):
@@ -127,13 +132,11 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def srobo_env_version():
         return 1
 
-    @staticmethod
-    def srobo_proj_name():
-        return "SR Project"
+    def srobo_proj_name(self):
+        return self.ucode.proj_meta['name']
 
-    @staticmethod
-    def srobo_proj_version():
-        return "2ae01472317d1935a84797ec1983ae243fc6aa28"
+    def srobo_proj_version(self):
+        return self.ucode.proj_meta['version']
 
 def create_http_server(reactor, port, static_dir):
     root = static.File(static_dir)

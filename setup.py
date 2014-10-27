@@ -11,6 +11,7 @@ setup(
     description = "Server for herding user's code running on the Student Robotics platform",
     install_requires = ["autobahn >= 0.8.10",
                         "flask >= 0.10",
+                        "pyyaml >= 3",
                         "zope.interface >= 4.0.5",
                         "Twisted >= 12.2.0" ],
 )

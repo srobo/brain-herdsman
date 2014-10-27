@@ -9,6 +9,7 @@ import time
 from twisted.internet import protocol
 from twisted.protocols import basic
 from twisted.internet import reactor
+import yaml
 import zipfile
 
 MODE_DEV = "dev"
@@ -77,6 +78,10 @@ class UserCodeManager(object):
         self.log_line_cb = None
         self.logfile = None
 
+        # Project metadata
+        self.proj_meta = {'name': 'SR Project', 'team': '???', 'version': '1'}
+        self.proj_meta_cb = None
+
         # Current user process protocol and transport
         self.userproto = None
         self.usertransport = None
@@ -93,6 +98,16 @@ class UserCodeManager(object):
         self.state = newstate
         if self.state_change_cb is not None:
             self.state_change_cb(newstate)
+
+    def _load_metadata(self):
+        try:
+            with open(os.path.join(self.userdir, "project.yaml"), "r") as f:
+                self.proj_meta = yaml.load(f)
+                if self.proj_meta_cb is not None:
+                    self.proj_meta_cb(self.proj_meta)
+        except IOError:
+            # Fall back to the old metadata if it is unavailable
+            pass
 
     def load(self, fileobj, type="zip"):
         "Load new code into the robot"
@@ -120,6 +135,8 @@ class UserCodeManager(object):
         elif type == "tar":
             with tarfile.open(fileobj=fileobj, mode="r") as tarf:
                 tarf.extractall(self.userdir)
+
+        self._load_metadata()
 
         self.start_fifo = tempfile.mktemp()
         os.mkfifo(self.start_fifo)
