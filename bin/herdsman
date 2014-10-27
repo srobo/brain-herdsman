@@ -40,6 +40,9 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.register(self.srobo_proj_name, "org.srobo.project.name")
         self.register(self.srobo_proj_version, "org.srobo.project.version")
 
+        self.subscribe(self.srobo_set_zone, "org.srobo.zone")
+        self.subscribe(self.srobo_set_mode, "org.srobo.mode")
+
         self.ucode.state_change_cb = self.state_change_cb
         self.ucode.log_line_cb = self.log_line_cb
         self.ucode.proj_meta_cb = self.proj_meta_cb
@@ -79,8 +82,14 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def srobo_get_zone(self):
         return self.ucode.zone
 
+    def srobo_set_zone(self, zone):
+        self.ucode.zone = zone
+
     def srobo_get_mode(self):
         return self.ucode.mode
+
+    def srobo_set_mode(self, mode):
+        self.ucode.mode = mode
 
     def get_log_contents(self):
         if self.ucode.logfile is not None:
