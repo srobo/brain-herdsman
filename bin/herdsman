@@ -76,18 +76,11 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         major, minor, patch = [int(x) for x in client_version.split(".")]
         return {"compatible": True}
 
-    @staticmethod
-    def srobo_get_zone():
+    def srobo_get_zone(self):
         return self.ucode.zone
 
-    @staticmethod
-    def srobo_get_mode():
-        m = self.ucode.mode
-        if m == self.ucode.MODE_DEV:
-            return "dev"
-        elif m == self.ucode.MODE_COMP:
-            return "comp"
-        raise Exception("Unknown mode setting")
+    def srobo_get_mode(self):
+        return self.ucode.mode
 
     def get_log_contents(self):
         if self.ucode.logfile is not None:
