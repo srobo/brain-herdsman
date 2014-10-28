@@ -91,8 +91,10 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         else:
             contents = ""
 
-        lines = contents.splitlines()
-        print "CONTENTS", len(lines)
+        lines = contents.split('\r\n')
+        # Remove trailing blank line if present
+        if lines and not lines[-1]:
+            del lines[-1]
         return lines
 
     def srobo_logs_all(self):

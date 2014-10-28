@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 import time
 from twisted.internet import protocol
+from twisted.protocols import basic
 from twisted.internet import reactor
 import zipfile
 
@@ -18,18 +19,37 @@ class InvalidOpForState(Exception):
     "Invalid operation for the given state"
     pass
 
+class SubprocessReceiver(basic.LineReceiver):
+    delimiter = '\n'
+
+    def __init__(self, callback):
+        self._callback = callback
+
+    def lineReceived(self, line):
+        self._callback(line)
+
 class UserCodeProtocol(protocol.ProcessProtocol):
     def __init__(self, start_fifo, exit_cb, logfile, log_line_cb):
         self.start_fifo = start_fifo
         self.exit_cb = exit_cb
         self.logf = open(logfile,"w")
+        self.line_receiver = SubprocessReceiver(self.receive_line)
         self.log_line_cb = log_line_cb
 
-    def childDataReceived(self, childFD, data):
+    def receive_line(self, data):
+        # Remove carriage return and other trailing whitespace if it's present
+        data = data.rstrip()
         self.log_line_cb(data)
         self.logf.write(data)
+        self.logf.write('\r\n')
         self.logf.flush()
         os.fsync(self.logf.fileno())
+
+    def outReceived(self, data):
+        self.line_receiver.dataReceived(data)
+
+    def errReceived(self, data):
+        self.line_receiver.dataReceived(data)
 
     def processExited(self, status):
         self.exit_cb(status)
@@ -113,11 +133,11 @@ class UserCodeManager(object):
         self.usertransport = reactor.spawnProcess(self.userproto,
                                                   sys.executable,
                                                   args = [ sys.executable,
-                                                           "-m", "herdsman.loggrok",
                                                            "robot.py",
                                                            "--usbkey", self.logdir,
                                                            "--startfifo", self.start_fifo ],
                                                   env = os.environ,
+                                                  usePTY = True,
                                                   path = os.path.join(self.userdir, "user"))
         self.change_state(UserCodeManager.S_LOADED)
 
