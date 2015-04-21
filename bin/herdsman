@@ -6,6 +6,7 @@ from autobahn.twisted import wamp, websocket
 from herdsman import usercode
 from herdsman.usercode import UserCodeManager
 from herdsman.powerhack import get_power
+from herdsman.compkey import load_mode_settings
 import json
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -216,8 +217,15 @@ if __name__ == "__main__":
 
     user = usercode.UserCodeManager(args.log_dir)
 
+    mode_settings = load_mode_settings()
+
+    user.zone = mode_settings.zone
+    user.arena = mode_settings.arena
+
     if args.comp:
         user.mode = usercode.MODE_COMP
+    else:
+        user.mode = mode_settings.mode
 
     if args.user is not None:
         with open(args.user, "r") as f:

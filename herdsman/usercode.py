@@ -51,6 +51,7 @@ class UserCodeManager(object):
         self.logdir = logdir
         self.zone = 0
         self.mode = MODE_DEV
+        self.arena = "A"
         self.state = UserCodeManager.S_IDLE
         self.state_change_cb = None
         self.log_line_cb = None
@@ -132,7 +133,8 @@ class UserCodeManager(object):
             return
 
         self.userproto.send_start( {"mode": self.mode,
-                                    "zone": self.zone} )
+                                    "zone": self.zone,
+                                    "arena": self.arena } )
         
         if self.mode == MODE_COMP:
             self.match_timer = reactor.callLater(MATCH_LENGTH, self.end_match)

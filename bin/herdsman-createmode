@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+from argparse import ArgumentParser
+import json
+import os
+
+parser = ArgumentParser( description = "Create USB mode file" )
+parser.add_argument("arena")
+parser.add_argument("zone", type=int)
+parser.add_argument("outdir")
+args = parser.parse_args()
+
+assert args.arena in ["A", "B"]
+assert args.zone in [0,1,2,3]
+
+outfile = os.path.join( args.outdir, "mode.json" )
+with open(outfile, "w") as f:
+    f.write( json.dumps( { "arena": args.arena,
+                           "zone": args.zone } ) )
