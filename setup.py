@@ -13,5 +13,7 @@ setup(
                         "flask >= 0.10",
                         "pyyaml >= 3",
                         "zope.interface >= 4.0.5",
-                        "Twisted >= 12.2.0" ],
+                        "Twisted >= 12.2.0",
+                        "sr.robot >= 0.1",
+                    ],
 )
