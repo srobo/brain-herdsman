@@ -153,7 +153,7 @@ class CustomPages(resource.Resource):
     def render_GET(self, request):
         request.setHeader("Access-Control-Allow-Origin", "*")
         return json.dumps({"pages":[]})
-        
+
 def create_custom_http_server(reactor, port, path):
     root = CustomRoot()
     root.putChild("custom_pages", CustomPages())
@@ -203,7 +203,8 @@ if __name__ == "__main__":
 
     parser.add_argument("-s", "--static-dir",
                         type=str,
-                        help="The directory to serve statically over HTTP")
+                        help="The directory to serve statically over HTTP",
+                        required=True)
 
     parser.add_argument("-u", "--user",
                         type=str,
@@ -214,10 +215,6 @@ if __name__ == "__main__":
                         help="Default to competition mode")
 
     args = parser.parse_args()
-
-    if args.static_dir is None:
-        print >>sys.stderr, "Static dir needs to be specified"
-        exit(1)
 
     if args.debug:
         log.startLogging(sys.stdout)
@@ -251,4 +248,3 @@ if __name__ == "__main__":
                               args.custom_dir)
 
     reactor.run()
-
