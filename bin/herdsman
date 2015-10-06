@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
-import json
 import sys
 
 from autobahn.wamp import types
@@ -8,7 +7,7 @@ from autobahn.twisted import wamp, websocket
 from twisted.internet import reactor
 from twisted.internet.endpoints import serverFromString
 from twisted.python import log
-from twisted.web import server, resource, static
+from twisted.web import server, static
 
 from sr.herdsman import usercode
 from sr.herdsman.usercode import UserCodeManager
@@ -141,23 +140,9 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def srobo_proj_version(self):
         return self.ucode.proj_meta['version']
 
+
 def create_http_server(reactor, port, static_dir):
     root = static.File(static_dir)
-    site = server.Site(root)
-    reactor.listenTCP(port, site)
-
-class CustomRoot(resource.Resource):
-    pass
-
-class CustomPages(resource.Resource):
-    isLeaf = True
-    def render_GET(self, request):
-        request.setHeader("Access-Control-Allow-Origin", "*")
-        return json.dumps({"pages":[]})
-
-def create_custom_http_server(reactor, port, path):
-    root = CustomRoot()
-    root.putChild("custom_pages", CustomPages())
     site = server.Site(root)
     reactor.listenTCP(port, site)
 
@@ -241,11 +226,6 @@ if __name__ == "__main__":
         reactor.callLater(0.1, start_button_monitor, power, user)
 
     HerdsmanWAMP.create_server(reactor, args.wamp_port, user, args.debug)
-    create_http_server(reactor,
-                       args.port,
-                       args.static_dir)
-    create_custom_http_server(reactor,
-                              args.custom_port,
-                              args.custom_dir)
+    create_http_server(reactor, args.port, args.static_dir)
 
     reactor.run()
