@@ -6,9 +6,10 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='herdsman',
+    name='sr.herdsman',
     version='0.1.0',
     packages=find_packages(),
+    namespace_packages=['sr'],
     scripts=['bin/herdsman'],
     description="Server for herding user's code running on the Student "
                 "Robotics platform",

@@ -3,10 +3,10 @@ from argparse import ArgumentParser
 from autobahn.wamp import types
 from autobahn.twisted.util import sleep
 from autobahn.twisted import wamp, websocket
-from herdsman import usercode
-from herdsman.usercode import UserCodeManager
-from herdsman.powerhack import get_power
-from herdsman.compkey import load_mode_settings
+from sr.herdsman import usercode
+from sr.herdsman.usercode import UserCodeManager
+from sr.herdsman.powerhack import get_power
+from sr.herdsman.compkey import load_mode_settings
 import json
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
