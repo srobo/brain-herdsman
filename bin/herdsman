@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
+import json
+import sys
+
 from autobahn.wamp import types
-from autobahn.twisted.util import sleep
 from autobahn.twisted import wamp, websocket
+from twisted.internet import reactor
+from twisted.internet.endpoints import serverFromString
+from twisted.python import log
+from twisted.web import server, resource, static
+
 from sr.herdsman import usercode
 from sr.herdsman.usercode import UserCodeManager
 from sr.herdsman.powerhack import get_power
 from sr.herdsman.compkey import load_mode_settings
-import json
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.endpoints import serverFromString
-from twisted.python import log
-from twisted.web import server, resource, static
-import sys
+
 
 class HerdsmanWAMP(wamp.ApplicationSession):
 

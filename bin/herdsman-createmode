@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import json
 import os
 
+
 parser = ArgumentParser( description = "Create USB mode file" )
 parser.add_argument("arena", choices=['A', 'B'], help='Arena')
 parser.add_argument("zone", type=int, choices=[0, 1, 2, 3], help='Zone/Corner')
