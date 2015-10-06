@@ -1,4 +1,4 @@
-import os 
+import os
 import json
 import shutil
 from subprocess import Popen, call, check_output
@@ -109,7 +109,7 @@ class UserCodeManager(object):
             # Fall back to the old metadata if it is unavailable
             pass
 
-    def load(self, fileobj, type="zip"):
+    def load(self, path, type=None):
         "Load new code into the robot"
 
         if self.state != UserCodeManager.S_IDLE:
@@ -127,14 +127,39 @@ class UserCodeManager(object):
 
         print "Extracting user code to", self.userdir
 
-        # Open the file in transparent (de)compression mode
-        if type == "zip":
-            with zipfile.ZipFile(fileobj, "r") as zipf:
-                zipf.extractall(self.userdir)
+        def extract_user_code(type):
+            print('Attempting extraction as "{}".'.format(type))
 
-        elif type == "tar":
-            with tarfile.open(fileobj=fileobj, mode="r") as tarf:
-                tarf.extractall(self.userdir)
+            if type == 'zip':
+                try:
+                    with zipfile.ZipFile(path) as zipf:
+                        zipf.extractall(self.userdir)
+                except (zipfile.BadZipfile, IOError):
+                    raise ValueError('Not a zip file.')
+            elif type == 'tar':
+                try:
+                    with tarfile.open(path, errorlevel=2) as tarf:
+                        tarf.extractall(self.userdir)
+                except (tarfile.TarError, IOError):
+                    raise ValueError('Not a tar file.')
+            elif type == 'directory':
+                shutil.copytree(path, os.path.join(self.userdir, 'user'))
+            else:
+                raise ValueError('Invalid type.')
+
+        if type is None:
+            # try autodetection
+            for type in ['zip', 'tar', 'directory']:
+                try:
+                    extract_user_code(type)
+                except ValueError:
+                    continue
+                else:
+                    break
+            else:
+                raise ValueError('Unknown user code type.')
+        else:
+            extract_user_code(type)
 
         self._load_metadata()
 
@@ -172,7 +197,7 @@ class UserCodeManager(object):
         self.userproto.send_start( {"mode": self.mode,
                                     "zone": self.zone,
                                     "arena": self.arena } )
-        
+
         if self.mode == MODE_COMP:
             self.match_timer = reactor.callLater(MATCH_LENGTH, self.end_match)
 
@@ -188,7 +213,7 @@ class UserCodeManager(object):
 
     def code_exited(self, status):
         "Callback for when the subprocess exits"
-        print "Code exited"
+        print('Code exited with status {}.'.format(status))
         self.change_state(UserCodeManager.S_IDLE)
         self.hw_reset()
 

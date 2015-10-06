@@ -56,7 +56,7 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.publish("org.srobo.project.name", metadata['name'])
         self.publish("org.srobo.project.version", metadata['version'])
 
-    def srobo_hello(version_string):
+    def srobo_hello(self, version_string):
         major, minor, patch = [int(part) for part in version_string.split('.')]
         return {'compatible': True}
 
@@ -191,8 +191,7 @@ if __name__ == "__main__":
         user.mode = mode_settings.mode
 
     if args.user is not None:
-        with open(args.user, "r") as f:
-            user.load(f)
+        user.load(args.user)
 
     power = get_power()
     if power is not None:
