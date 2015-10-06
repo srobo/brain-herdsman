@@ -18,6 +18,7 @@ setup(
         'PyYAML >=3.11, <4',
         'zope.interface >=4.1, <5',
         'Twisted >=15.4, <16',
-        'sr.robot >= 0.1, <1',
+        'crossbar >=0.1, <1',
+        'sr.robot >=0.1, <1',
     ],
 )

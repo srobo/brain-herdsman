@@ -2,10 +2,8 @@
 from argparse import ArgumentParser
 import sys
 
-from autobahn.wamp import types
-from autobahn.twisted import wamp, websocket
+from autobahn.twisted import wamp
 from twisted.internet import reactor
-from twisted.internet.endpoints import serverFromString
 from twisted.python import log
 from twisted.web import server, static
 
@@ -57,22 +55,6 @@ class HerdsmanWAMP(wamp.ApplicationSession):
     def proj_meta_cb(self, metadata):
         self.publish("org.srobo.project.name", metadata['name'])
         self.publish("org.srobo.project.version", metadata['version'])
-
-    @staticmethod
-    def create_server(reactor, port, ucode, debug=False):
-        router_factory = wamp.RouterFactory()
-        session_factory = wamp.RouterSessionFactory(router_factory)
-
-        component_config = types.ComponentConfig(realm = "srobo")
-        component_session = HerdsmanWAMP(ucode, component_config)
-        session_factory.add(component_session)
-
-        transport_factory = websocket.WampWebSocketServerFactory(session_factory,
-                                                                 debug = debug,
-                                                                 debug_wamp = debug)
-
-        wamp_server = serverFromString(reactor, "tcp:{}".format(port))
-        wamp_server.listen(transport_factory)
 
     @staticmethod
     def srobo_hello(client_version):
@@ -217,7 +199,10 @@ if __name__ == "__main__":
     if power is not None:
         reactor.callLater(0.1, start_button_monitor, power, user)
 
-    HerdsmanWAMP.create_server(reactor, args.wamp_port, user, args.debug)
+    url = u'ws://localhost:{}/ws'.format(args.wamp_port)
+    runner = wamp.ApplicationRunner(url=url, realm=u'srobo')
+    runner.run(lambda x: HerdsmanWAMP(user, x))
+
     create_http_server(reactor, args.port, args.static_dir)
 
     reactor.run()
