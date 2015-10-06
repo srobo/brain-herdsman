@@ -56,10 +56,9 @@ class HerdsmanWAMP(wamp.ApplicationSession):
         self.publish("org.srobo.project.name", metadata['name'])
         self.publish("org.srobo.project.version", metadata['version'])
 
-    @staticmethod
-    def srobo_hello(client_version):
-        major, minor, patch = [int(x) for x in client_version.split(".")]
-        return {"compatible": True}
+    def srobo_hello(version_string):
+        major, minor, patch = [int(part) for part in version_string.split('.')]
+        return {'compatible': True}
 
     def srobo_get_zone(self):
         return self.ucode.zone
