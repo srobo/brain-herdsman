@@ -14,7 +14,6 @@ setup(
                 "Robotics platform",
     install_requires=[
         'autobahn >=0.10, <1',
-        'Flask >=0.10, <1',
         'PyYAML >=3.11, <4',
         'zope.interface >=4.1, <5',
         'Twisted >=15.4, <16',
