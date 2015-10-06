@@ -23,7 +23,7 @@ def pages():
 @app.route('/pages/my-page')
 def my_page():
     return """
-        <dom-module name="my-custom-page">
+        <dom-module id="my-custom-page">
             <template>
                 <h1>It's a custom page!</h1>
             </template>
