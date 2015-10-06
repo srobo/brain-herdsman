@@ -5,7 +5,7 @@ import sys
 from autobahn.twisted import wamp
 from twisted.internet import reactor
 from twisted.python import log
-from twisted.web import server, static
+from twisted.web import proxy, server, static
 
 from sr.herdsman import usercode
 from sr.herdsman.usercode import UserCodeManager
@@ -124,6 +124,7 @@ class HerdsmanWAMP(wamp.ApplicationSession):
 
 def create_http_server(reactor, port, static_dir):
     root = static.File(static_dir)
+    root.putChild('user', proxy.ReverseProxyResource('127.0.0.1', 10000, ''))
     site = server.Site(root)
     reactor.listenTCP(port, site)
 
@@ -199,7 +200,7 @@ if __name__ == "__main__":
 
     url = u'ws://localhost:{}/ws'.format(args.wamp_port)
     runner = wamp.ApplicationRunner(url=url, realm=u'srobo')
-    runner.run(lambda x: HerdsmanWAMP(user, x))
+    runner.run(lambda x: HerdsmanWAMP(user, x), start_reactor=False)
 
     create_http_server(reactor, args.port, args.static_dir)
 
