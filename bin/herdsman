@@ -175,14 +175,6 @@ if __name__ == "__main__":
                         type=int, default=9000,
                         help="The port to server WAMP over")
 
-    parser.add_argument("-c", "--custom-port",
-                        type=int, default=10000,
-                        help="Port number of user's custom pages server")
-
-    parser.add_argument("-t", "--custom-dir",
-                        type=str, default="custom",
-                        help="Directory to pretend to serve custom pages from")
-
     parser.add_argument("-l", "--log-dir",
                         type=str, default="./",
                         help="The directory to store the log in")
