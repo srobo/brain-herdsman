@@ -213,6 +213,10 @@ if __name__ == "__main__":
                         action="store_true",
                         help="Default to competition mode")
 
+    parser.add_argument("--python",
+                        type=str, default=sys.executable,
+                        help="Path to the Python interpreter to use for user code")
+
     args = parser.parse_args()
 
     if args.static_dir is None:
@@ -222,7 +226,7 @@ if __name__ == "__main__":
     if args.debug:
         log.startLogging(sys.stdout)
 
-    user = usercode.UserCodeManager(args.log_dir)
+    user = usercode.UserCodeManager(args.log_dir, args.python)
 
     mode_settings = load_mode_settings()
 
